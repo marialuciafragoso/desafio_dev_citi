@@ -93,10 +93,38 @@ export const createPlanta = async (req: Request, res: Response) => {
   }
 };
 
-// listar todas as plantas cadastradas (GET /plantas)
+// listar todas as plantas cadastradas com filtros opcionais (GET /plantas)
 export const readAllPlantas = async (req: Request, res: Response) => {
   try {
-    const plantas = await PlantaRepository.findAllPlantas();
+    const { luminosidade, petFriendly } = req.query;
+
+    let luminosidadeFiltro: Luminosidade | undefined = undefined;
+    if (luminosidade !== undefined) {
+      if (
+        typeof luminosidade !== "string" ||
+        !Object.values(Luminosidade).includes(luminosidade as Luminosidade)
+      ) {
+        return res.status(400).json({
+          message: "Filtro 'luminosidade' inválido. Use SOMBRA, MEIA_SOMBRA ou SOL_PLENO.",
+        });
+      }
+      luminosidadeFiltro = luminosidade as Luminosidade;
+    }
+
+    let petFriendlyFiltro: boolean | undefined = undefined;
+    if (petFriendly !== undefined) {
+      if (petFriendly !== "true" && petFriendly !== "false") {
+        return res.status(400).json({
+          message: "Filtro 'petFriendly' inválido. Use true ou false.",
+        });
+      }
+      petFriendlyFiltro = petFriendly === "true";
+    }
+
+    const plantas = await PlantaRepository.findAllPlantas({
+      luminosidade: luminosidadeFiltro,
+      petFriendly: petFriendlyFiltro,
+    });
 
     return res.status(200).json(plantas);
   } catch (error) {
@@ -236,5 +264,72 @@ export const deletePlanta = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Erro ao remover planta." });
+  }
+};
+
+// Realizar venda de uma planta diminuindo o estoque (POST /plantas/:id/venda)
+export const venderPlanta = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "O id deve ser um número inteiro positivo." });
+    }
+
+    const { quantidade } = req.body;
+
+    if (quantidade === undefined || !Number.isInteger(quantidade) || quantidade <= 0) {
+      return res.status(400).json({
+        message: "O campo 'quantidade' é obrigatório e deve ser um número inteiro maior que zero.",
+      });
+    }
+
+    const planta = await PlantaRepository.findPlantaById(id);
+
+    if (!planta) {
+      return res.status(404).json({ message: "Planta não encontrada." });
+    }
+
+    if (planta.estoque < quantidade) {
+      return res.status(400).json({
+        message: `Estoque insuficiente. Temos só ${planta.estoque} vasos disponíveis.`,
+      });
+    }
+
+    const plantaAtualizada = await PlantaRepository.venderPlanta(id, quantidade);
+
+    if (!plantaAtualizada) {
+      return res.status(400).json({
+        message: "Estoque insuficiente para concluir a venda.",
+      });
+    }
+
+    return res.status(200).json(plantaAtualizada);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao processar venda da planta." });
+  }
+};
+
+// Calcular valor total em centavos e total de vasos do estoque (GET /plantas/estoque/valor-total)
+export const getValorTotalEstoque = async (req: Request, res: Response) => {
+  try {
+    const plantas = await PlantaRepository.findAllPlantasPrecoEEstoque();
+
+    let valorTotalEmCentavos = 0;
+    let totalDeVasos = 0;
+
+    for (const planta of plantas) {
+      valorTotalEmCentavos += planta.preco * planta.estoque;
+      totalDeVasos += planta.estoque;
+    }
+
+    return res.status(200).json({
+      valorTotalEmCentavos,
+      totalDeVasos,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao calcular valor total do estoque." });
   }
 };

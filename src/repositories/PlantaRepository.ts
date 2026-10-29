@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Luminosidade, Prisma } from "@prisma/client";
 import prisma from "@database";
 
 export const createPlanta = async (data: Prisma.PlantaCreateInput) => {
@@ -6,22 +6,72 @@ export const createPlanta = async (data: Prisma.PlantaCreateInput) => {
         data: data,
     });
 };
-export const findAllPlantas = async () => {
-    return await prisma.planta.findMany();
+
+export const findAllPlantas = async (filters?: {
+    luminosidade?: Luminosidade;
+    petFriendly?: boolean;
+}) => {
+    return await prisma.planta.findMany({
+        where: {
+            luminosidade: filters?.luminosidade,
+            petFriendly: filters?.petFriendly,
+        },
+    });
 };
+
+// Procura uma única planta onde a coluna id seja igual ao número id recebido (retorna null se não achar)
 export const findPlantaById = async (id: number) => {
     return await prisma.planta.findUnique({
         where: { id: id }
     });
 };
+
 export const updatePlanta = async (id: number, data: Prisma.PlantaUpdateInput) => {
     return await prisma.planta.update({
         where: { id: id },
         data: data,
     });
 };
+
+// Apaga definitivamente do banco a planta que tem aquele id.
 export const deletePlanta = async (id: number) => {
     return await prisma.planta.delete({
         where: { id: id }
+    });
+};
+
+// Diminui o estoque apenas se ainda houver quantidade suficiente no momento exato da atualização
+// (resolve o problema de duas pessoas tentarem comprar o último vaso ao mesmo tempo)
+export const venderPlanta = async (id: number, quantidade: number) => {
+    const resultado = await prisma.planta.updateMany({
+        where: {
+            id: id,
+            estoque: {
+                gte: quantidade,
+            },
+        },
+        data: {
+            estoque: {
+                decrement: quantidade,
+            },
+        },
+    });
+
+    if (resultado.count === 0) {
+        return null;
+    }
+
+    return await prisma.planta.findUnique({
+        where: { id: id },
+    });
+};
+
+// Busca apenas preco e estoque de todas as plantas para o cálculo do valor total
+export const findAllPlantasPrecoEEstoque = async () => {
+    return await prisma.planta.findMany({
+        select: {
+            preco: true,
+            estoque: true,
+        },
     });
 };

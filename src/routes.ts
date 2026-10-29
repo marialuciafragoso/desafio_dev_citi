@@ -15,11 +15,14 @@ routes.get("/users/:id", UserController.readUserById);
 routes.patch("/users/:id", UserController.updateUser);
 routes.delete("/users/:id", UserController.deleteUser);
 
-// CRUD de plantas
+// CRUD e regras de negócio de plantas
+// Atenção: rotas fixas (/plantas/estoque/valor-total) vêm antes de rotas com parâmetro (/plantas/:id)
 routes.post("/plantas", PlantaController.createPlanta);
 routes.get("/plantas", PlantaController.readAllPlantas);
+routes.get("/plantas/estoque/valor-total", PlantaController.getValorTotalEstoque);
 routes.get("/plantas/:id", PlantaController.readPlantaById);
 routes.patch("/plantas/:id", PlantaController.updatePlanta);
 routes.delete("/plantas/:id", PlantaController.deletePlanta);
+routes.post("/plantas/:id/venda", PlantaController.venderPlanta);
 
 export default routes;
