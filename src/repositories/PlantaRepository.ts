@@ -85,6 +85,18 @@ export const venderPlanta = async (id: number, quantidade: number) => {
     });
 };
 
+// Soma uma nova quantidade de vasos ao estoque atual da planta
+export const reporEstoquePlanta = async (id: number, quantidade: number) => {
+    return await prisma.planta.update({
+        where: { id: id },
+        data: {
+            estoque: {
+                increment: quantidade,
+            },
+        },
+    });
+};
+
 // Busca apenas preco e estoque de todas as plantas para o cálculo do valor total
 export const findAllPlantasPrecoEEstoque = async () => {
     return await prisma.planta.findMany({

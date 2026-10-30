@@ -345,6 +345,38 @@ export const venderPlanta = async (req: Request, res: Response) => {
   }
 };
 
+// Realizar reposição de estoque somando vasos ao estoque atual (POST /plantas/:id/reposicao)
+export const reporEstoquePlanta = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "O id deve ser um número inteiro positivo." });
+    }
+
+    const { quantidade } = req.body;
+
+    if (quantidade === undefined || !Number.isInteger(quantidade) || quantidade <= 0) {
+      return res.status(400).json({
+        message: "O campo 'quantidade' é obrigatório e deve ser um número inteiro maior que zero.",
+      });
+    }
+
+    const planta = await PlantaRepository.findPlantaById(id);
+
+    if (!planta) {
+      return res.status(404).json({ message: "Planta não encontrada." });
+    }
+
+    const plantaAtualizada = await PlantaRepository.reporEstoquePlanta(id, quantidade);
+
+    return res.status(200).json(plantaAtualizada);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao repor estoque da planta." });
+  }
+};
+
 // Calcular valor total em centavos e total de vasos do estoque (GET /plantas/estoque/valor-total)
 export const getValorTotalEstoque = async (req: Request, res: Response) => {
   try {
