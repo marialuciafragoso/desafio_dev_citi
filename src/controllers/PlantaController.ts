@@ -93,10 +93,10 @@ export const createPlanta = async (req: Request, res: Response) => {
   }
 };
 
-// listar todas as plantas cadastradas com filtros opcionais (GET /plantas)
+// listar todas as plantas cadastradas com filtros e ordenação opcionais (GET /plantas)
 export const readAllPlantas = async (req: Request, res: Response) => {
   try {
-    const { luminosidade, petFriendly } = req.query;
+    const { luminosidade, petFriendly, nome, ordem } = req.query;
 
     let luminosidadeFiltro: Luminosidade | undefined = undefined;
     if (luminosidade !== undefined) {
@@ -121,15 +121,49 @@ export const readAllPlantas = async (req: Request, res: Response) => {
       petFriendlyFiltro = petFriendly === "true";
     }
 
+    let nomeFiltro: string | undefined = undefined;
+    if (nome !== undefined) {
+      if (typeof nome !== "string" || nome.trim() === "") {
+        return res.status(400).json({
+          message: "Filtro 'nome' inválido. Informe um texto não vazio.",
+        });
+      }
+      nomeFiltro = nome.trim();
+    }
+
+    let ordemFiltro: "preco" | "nome" | undefined = undefined;
+    if (ordem !== undefined) {
+      if (ordem !== "preco" && ordem !== "nome") {
+        return res.status(400).json({
+          message: "Parâmetro 'ordem' inválido. Use 'preco' ou 'nome'.",
+        });
+      }
+      ordemFiltro = ordem;
+    }
+
     const plantas = await PlantaRepository.findAllPlantas({
       luminosidade: luminosidadeFiltro,
       petFriendly: petFriendlyFiltro,
+      nome: nomeFiltro,
+      ordem: ordemFiltro,
     });
 
     return res.status(200).json(plantas);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Erro ao listar plantas." });
+  }
+};
+
+// Listar todas as plantas esgotadas, ou seja, com estoque igual a 0 (GET /plantas/esgotadas)
+export const readPlantasEsgotadas = async (req: Request, res: Response) => {
+  try {
+    const plantasEsgotadas = await PlantaRepository.findPlantasEsgotadas();
+
+    return res.status(200).json(plantasEsgotadas);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erro ao listar plantas esgotadas." });
   }
 };
 
